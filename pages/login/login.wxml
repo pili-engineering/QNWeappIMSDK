@@ -1,0 +1,30 @@
+<view class="login-form">
+  <van-row custom-class="text-align-center m-b-20">七牛IM-Demo</van-row>
+  <van-row custom-class="m-b-20">
+    <van-field
+      placeholder="请输入账号" 
+      model:value="{{ account }}" 
+    />
+  </van-row>
+  <van-row custom-class="m-b-20">
+    <van-field 
+      placeholder="请输入密码" 
+      model:value="{{ password }}"
+    />
+  </van-row>
+  <van-button 
+    custom-class="m-b-20" 
+    type="primary" 
+    block 
+    bind:click="onSubmitSignIn"
+  >登录</van-button>
+  <van-button 
+    custom-class="m-b-20" 
+    type="primary" 
+    block
+    bind:click="onSubmitRegister"  
+  >注册</van-button>
+  <van-row custom-class="text-align-center m-b-20">
+    SDK_VERSION: {{SDK_VERSION}}
+  </van-row>
+</view>

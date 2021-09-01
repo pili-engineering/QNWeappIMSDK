@@ -1,0 +1,34 @@
+<view class="chatroom">
+  <scroll-view scroll-with-animation="{{true}}" scroll-into-view="message-{{messageId}}" scroll-y="{{true}}" class="chat-box">
+    <view class="chat-message m-b-20" wx:key="index" wx:for="{{messages}}" id="message-{{index}}">
+      <view class="chat-username">
+      用户_{{
+        item.content && 
+        item.content.content && 
+        item.content.content && 
+        item.content.content.msgStr ? item.content.content.msgStr.senderId : ''
+      }}：
+      </view>
+      <view class="chat-content">
+        {{
+          item.content && 
+          item.content.content && 
+          item.content.content && 
+          item.content.content.msgStr ? item.content.content.msgStr.msgContent : ''
+        }}
+      </view>
+    </view>
+  </scroll-view>
+  <van-row custom-class="chatroom-input">
+    <van-col span="18">
+      <van-field
+        value="{{ inputValue }}"
+        bind:change="onChangeInputValue"
+        placeholder="请输入要发送的内容"
+      />
+    </van-col>
+    <van-col span="6">
+      <van-button bind:click="onSubmitMessage" block type="primary">发送</van-button>
+    </van-col>
+  </van-row>
+</view>
