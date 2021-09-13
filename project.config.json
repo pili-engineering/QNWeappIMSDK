@@ -44,7 +44,7 @@
     "showES6CompileOption": false
   },
   "compileType": "miniprogram",
-  "libVersion": "2.2.5",
+  "libVersion": "2.19.3",
   "appid": "wxc78052ce50ca2357",
   "projectname": "miniprogram-quickstart",
   "isGameTourist": false,

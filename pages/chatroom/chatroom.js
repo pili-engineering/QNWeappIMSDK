@@ -1,8 +1,6 @@
 // pages/chatroom/chatroom.js
-import {
-  sendMessage
-} from '../../utils/im';
 import request from '../../api/request';
+import { generateFileName } from '../../utils/file';
 
 const app = getApp();
 
@@ -14,7 +12,299 @@ Page({
   data: {
     messages: [],
     inputValue: '',
-    messageId: 0
+    messageId: 0,
+    sendButtonVisible: false,
+    voiceBlockVisible: false,
+    voicing: false,
+    emojiPickerVisible: false
+  },
+
+  /**
+   * 插入 emoji
+   * @param event
+   */
+  insertEmoji(event) {
+    console.log('insertEmoji', event)
+    const { emotionName } = event.detail;
+    const { inputValue } = this.data;
+    this.setData({
+      inputValue: inputValue + emotionName
+    })
+  },
+
+  /**
+   * 删除 emoji
+   * @param event
+   */
+  deleteEmoji(event) {
+    const { inputValue } = this.data;
+    this.setData({
+      inputValue: inputValue.slice(0, inputValue.length - 1)
+    })
+  },
+
+  /**
+   * 切换 emoji 组件显隐
+   */
+  toggleEmojiPickerVisible() {
+    this.setData({
+      emojiPickerVisible: !this.data.emojiPickerVisible
+    })
+  },
+
+  /**
+   * 打开文档
+   * @param event
+   */
+  openDocument(event) {
+    const url = event.target.dataset.url;
+    wx.downloadFile({
+      url,
+      success: function (res) {
+        const filePath = res.tempFilePath
+        wx.openDocument({
+          filePath: filePath,
+          success: function (res) {
+            console.log('打开文档成功', res)
+          },
+          fail(err) {
+            wx.showModal({
+              title: '文档打开失败',
+              content: JSON.stringify(err)
+            })
+          }
+        })
+      }
+    })
+  },
+
+  /**
+   * 语音播放
+   * @param event
+   */
+  playVoice(event) {
+    const url = event.target.dataset.url;
+    const innerAudioContext = wx.createInnerAudioContext();
+    innerAudioContext.src = url;
+    innerAudioContext.onError((err) => {
+      wx.showModal({
+        title: '语音播放失败',
+        content: JSON.stringify(err)
+      })
+    })
+    innerAudioContext.onStop(res => {
+      console.log('语音播放结束: ', res)
+    })
+    innerAudioContext.play();
+  },
+
+  /**
+   * 发送图片消息
+   */
+  sendImageMessage() {
+    return wx.chooseImage().then(res => {
+      return this.uploadFileToOSS({
+        file_type: 102,
+        tempFilePaths: res.tempFilePaths
+      });
+    }).then(res => {
+      const fileInfo = {
+        dName: 'file',
+        url: res.ossConfig.download_url
+      };
+      app.getIM().sysManage.sendGroupMessage({
+        type: 'image',
+        gid: this.imGroupId,
+        content: "",
+        attachment: fileInfo
+      });
+    });
+  },
+
+  /**
+   * 上传文件, 首先获取聊天文件上传地址, 然后进行上传
+   * @param config
+   * @returns {*}
+   */
+  uploadFileToOSS(config) {
+    const { tempFilePaths, ...restConfig } = config || {};
+    return app.getIM().sysManage.asyncGetFileUploadChatFileUrl({
+      to_id: this.imGroupId,
+      to_type: 2,
+      ...restConfig
+    }).then(ossConfig => {
+      const token = app.getIM().userManage.getToken();
+      return new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: ossConfig.upload_url,
+          filePath: tempFilePaths[0],
+          name: "file",//后台要绑定的名称
+          header: {
+            "Content-Type": "multipart/form-data",
+            'access-token': token,
+            'app_id': app.globalData.appid,
+          },
+          //参数绑定
+          formData: {
+            OSSAccessKeyId: ossConfig.oss_body_param.OSSAccessKeyId,
+            policy: ossConfig.oss_body_param.policy,
+            key: ossConfig.oss_body_param.key,
+            signature: ossConfig.oss_body_param.signature,
+            callback: ossConfig.oss_body_param.callback
+          },
+          success: res => {
+            resolve(Object.assign(res, {
+              ossConfig
+            }));
+          },
+          fail: err => {
+            reject(err)
+          }
+        });
+      })
+    });
+  },
+
+  /**
+   * 发送文件消息
+   */
+  sendFileMessage() {
+    return wx.chooseMessageFile().then(res => {
+      const tempFilePaths = res.tempFiles.map(file => file.path);
+      return this.uploadFileToOSS({
+        file_type: 101,
+        tempFilePaths
+      });
+    }).then(res => {
+      const fileInfo = {
+        dName: 'file',
+        url: res.ossConfig.download_url
+      };
+      app.getIM().sysManage.sendGroupMessage({
+        type: 'file',
+        gid: this.imGroupId,
+        content: "",
+        attachment: fileInfo
+      });
+    });
+  },
+
+  /**
+   * 语音中
+   */
+  startRecord() {
+    const recorderManager = wx.getRecorderManager()
+    this.recorderManager = recorderManager;
+    recorderManager.onError((res) => {
+      console.log("录音错误: ", res);
+    });
+    recorderManager.onStop(res => {
+      this.startTime = this.startTime || 0;
+      this.recorderDuration = Math.ceil((new Date().getTime() - this.startTime) / 1000);
+      this.preUpload(res.tempFilePath);
+      console.log("录音完成: ", res.tempFilePath);
+    });
+    const options = {
+      sampleRate: 44100,
+      numberOfChannels: 1,
+      encodeBitRate: 192000,
+      format: 'mp3',
+    };
+    recorderManager.start(options);
+    this.setData({
+      voicing: true
+    })
+    this.recorderTimer = setTimeout(() => {
+      this.stopRecord();
+    }, 30000);
+  },
+
+  /**
+   * 语音结束并发送
+   */
+  stopRecord() {
+    const recorderManager = this.recorderManager;
+    if (this.recorderTimer) clearTimeout(this.recorderTimer);
+    if (recorderManager) {
+      this.setData({
+        voicing: false
+      }, () => {
+        recorderManager.stop();
+      })
+    }
+  },
+
+  /**
+   * 获取聊天文件上传地址
+   * @param tempFilePath
+   */
+  preUpload(tempFilePath) {
+    app.getIM().sysManage.asyncGetFileUploadChatFileUrl({
+      file_type: 104,
+      to_id: this.imGroupId,
+      to_type: 2
+    }).then(res => {
+      this.uploadVoice(tempFilePath, res)
+    })
+  },
+
+  /**
+   * 上传音频
+   * @param path
+   * @param param
+   */
+  uploadVoice(path, param) {
+    const token = app.getIM().userManage.getToken();
+    wx.uploadFile({
+      url: param.upload_url,
+      filePath: path,
+      name: 'file',// 后台要绑定的名称
+      header: {
+        "Content-Type": "multipart/form-data",
+        'access-token': token,
+        'app_id': app.globalData.appid,
+      },
+      //参数绑定
+      formData: {
+        OSSAccessKeyId: param.oss_body_param.OSSAccessKeyId,
+        policy: param.oss_body_param.policy,
+        key: param.oss_body_param.key,
+        signature: param.oss_body_param.signature,
+        callback: param.oss_body_param.callback
+      },
+      success: res => {
+        this.sendVoiceMessage(param.download_url);
+      },
+      fail: function (res) {
+        console.log("。。录音保存失败。。", res);
+      }
+    });
+  },
+
+  /**
+   * 发送音频消息
+   * @param url
+   */
+  sendVoiceMessage(url) {
+    const fileInfo = {
+      dName: 'file',
+      url,
+      duration: this.recorderDuration
+    };
+    app.getIM().sysManage.sendGroupMessage({
+      type: 'audio',
+      gid: this.imGroupId,
+      content: "",
+      attachment: fileInfo
+    });
+  },
+
+  /**
+   * 切换语音识别块显示隐藏
+   */
+  toggleVoice() {
+    const { voiceBlockVisible } = this.data;
+    this.setData({ voiceBlockVisible: !voiceBlockVisible })
   },
 
   /**
@@ -28,9 +318,14 @@ Page({
         group_id: this.groupId
       }
     }).then(response => {
-      console.log('joinChatRoom response', response);
       this.imGroupId = response.data.im_group_id;
-      app.globalData.im.chatroomManage.join(this.imGroupId);
+      return app.getIM().chatroomManage.join(this.imGroupId);
+    }).finally(() => {
+      // if (this.imGroupId) {
+      //   // 获取历史记录
+      //   app.getIM().sysManage.requireHistoryMessage(this.imGroupId, 0, 20);
+      // }
+      this.setEventListeners();
     });
   },
 
@@ -39,22 +334,33 @@ Page({
    * @param event
    */
   onChangeInputValue(event) {
+    const inputValue = event.detail;
     this.setData({
-      inputValue: event.detail
+      inputValue,
+      sendButtonVisible: !!inputValue
     });
   },
 
   /**
    * 发送消息
    */
-  onSubmitMessage() {
-    const {
-      inputValue
-    } = this.data;
-    sendMessage(app.globalData.im, {
-      group_id: this.imGroupId,
-      text: inputValue
-    });
+  sendTextMessage() {
+    const { inputValue } = this.data;
+    const cuid = app.getIM().userManage.getUid() + '';
+    const message = {
+      content: JSON.stringify({
+        content: {
+          action: 'pubChatText',
+          msgStr: {
+            senderId: cuid,
+            senderName: '',
+            msgContent: inputValue
+          }
+        }
+      }),
+      gid: this.imGroupId
+    };
+    app.getIM().sysManage.sendGroupMessage(message);
     this.setData({
       inputValue: ''
     });
@@ -64,8 +370,7 @@ Page({
    * 设置 IM 事件监听
    */
   setEventListeners() {
-    console.log('setEventListeners');
-    app.globalData.im.on({
+    app.getIM().on({
       onGroupMessage: this.onGroupMessage,
       // onMessageStatusChanged: response => {
       //   console.log('response1', response);
@@ -84,7 +389,6 @@ Page({
    * @param {*} message
    */
   onGroupMessage(message) {
-    console.log('onGroupMessage', message);
     const content = JSON.parse(message.content || '{}');
     const {
       messages: prevMessages
@@ -103,17 +407,21 @@ Page({
   },
 
   /**
+   * 解析 emoji
+   * @param emoji
+   * @returns {*}
+   */
+  parseEmoji(emoji) {
+    const emojiInstance = this.selectComponent('.mp-emoji')
+    return emojiInstance.parseEmoji(emoji);
+  },
+
+  /**
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
     this.groupId = options.groupId;
-    this.joinChatRoom().finally(() => {
-      if (this.imGroupId) {
-        // 获取历史记录
-        app.globalData.im.sysManage.requireHistoryMessage(this.imGroupId, 0, 20);
-      }
-      this.setEventListeners();
-    });
+    this.joinChatRoom();
   },
 
   /**
@@ -142,10 +450,10 @@ Page({
    */
   onUnload: function () {
     console.log('leave')
-    app.globalData.im.off({
+    app.getIM().off({
       onGroupMessage: this.onGroupMessage
     });
-    // app.globalData.im.chatroomManage.leave(this.imGroupId);
+    // app.getIM().chatroomManage.leave(this.imGroupId);
   },
 
   /**
