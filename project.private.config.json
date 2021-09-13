@@ -35,6 +35,36 @@
           "pathName": "pages/chatroom/chatroom",
           "query": "groupId=jser2",
           "scene": null
+        },
+        {
+          "name": "pages/chatroom/chatroom",
+          "pathName": "pages/chatroom/chatroom",
+          "query": "groupId=jser2",
+          "scene": null
+        },
+        {
+          "name": "pages/chatroom/chatroom",
+          "pathName": "pages/chatroom/chatroom",
+          "query": "groupId=jser1",
+          "scene": null
+        },
+        {
+          "name": "pages/chatroom/chatroom",
+          "pathName": "pages/chatroom/chatroom",
+          "query": "groupId=jser1",
+          "scene": null
+        },
+        {
+          "name": "pages/chatroom/chatroom",
+          "pathName": "pages/chatroom/chatroom",
+          "query": "groupId=jser1",
+          "scene": null
+        },
+        {
+          "name": "pages/chatroom/chatroom",
+          "pathName": "pages/chatroom/chatroom",
+          "query": "groupId=jser3",
+          "scene": null
         }
       ]
     }
