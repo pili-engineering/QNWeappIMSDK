@@ -7,17 +7,13 @@
         <view class="chat-username">
           用户_{{
           item.content &&
-          item.content.content &&
-          item.content.content &&
-          item.content.content.msgStr ? item.content.content.msgStr.senderId : ''
+          item.content.msgStr ? item.content.msgStr.senderId : ''
           }}：
         </view>
         <view class="chat-content">
           {{
           item.content &&
-          item.content.content &&
-          item.content.content &&
-          item.content.content.msgStr ? item.content.content.msgStr.msgContent : ''
+          item.content.msgStr ? item.content.msgStr.msgContent : ''
           }}
         </view>
       </block>
@@ -25,9 +21,7 @@
         <view class="chat-username">
           用户_{{
           item.content &&
-          item.content.content &&
-          item.content.content &&
-          item.content.content.msgStr ? item.content.content.msgStr.senderId : ''
+          item.content.msgStr ? item.content.msgStr.senderId : ''
           }}：
         </view>
         <view bind:tap="playVoice" class="chat-content" data-url="{{item.attach.url}}">
@@ -38,9 +32,7 @@
         <view class="chat-username">
           用户_{{
           item.content &&
-          item.content.content &&
-          item.content.content &&
-          item.content.content.msgStr ? item.content.content.msgStr.senderId : ''
+          item.content.msgStr ? item.content.msgStr.senderId : ''
           }}：
         </view>
         <view class="chat-content">
@@ -51,9 +43,7 @@
         <view class="chat-username">
           用户_{{
           item.content &&
-          item.content.content &&
-          item.content.content &&
-          item.content.content.msgStr ? item.content.content.msgStr.senderId : ''
+          item.content.msgStr ? item.content.msgStr.senderId : ''
           }}：
         </view>
         <view class="chat-content" bind:tap="openDocument" data-url="{{item.attach.url}}">

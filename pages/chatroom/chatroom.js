@@ -349,13 +349,11 @@ Page({
     const cuid = app.getIM().userManage.getUid() + '';
     const message = {
       content: JSON.stringify({
-        content: {
-          action: 'pubChatText',
-          msgStr: {
-            senderId: cuid,
-            senderName: '',
-            msgContent: inputValue
-          }
+        action: 'pubChatText',
+        msgStr: {
+          senderId: cuid,
+          senderName: '',
+          msgContent: inputValue
         }
       }),
       gid: this.imGroupId
